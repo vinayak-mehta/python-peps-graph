@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Python PEPs Graph</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+    <style>
+      body {
+        font-family: "PT Sans", Helvetica, Arial, sans-serif;
+        margin: 2em;
+      }
+    </style>
+
+  </head>
+  <body>
+    <h1>Python PEPs Graph</h1>
+
+    <div>
+      <small>
+        Made by: <a href="https://twitter.com/vortex_ape">@vortex_ape</a>
+      </small>
+    </div>
+    <div>
+      <small>
+        Source: <a href="https://github.com/vinayak-mehta/python-peps-graph">https://github.com/vinayak-mehta/python-peps-graph</a>
+      </small>
+    </div>
+
+    <br>
+    <p align="center"><svg style="border:2px; border-style:solid;" width="80%"></svg></p>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      d3.json("https://raw.githubusercontent.com/vinayak-mehta/python-peps-graph/main/data.json").then( data => {
+        const svg = d3.select("svg")
+            .attr("viewBox", [-width / 2, -height / 2, width, height]);
+
+        const links = data.links;
+        const nodes = data.nodes;
+
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(function (link) { return link.id; }))
+          .force("charge", d3.forceManyBody())
+          .force("x", d3.forceX())
+          .force("y", d3.forceY());
+
+        simulation.on("tick", ticked);
+
+        const link = svg.append("g")
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.6)
+          .selectAll("line")
+          .data(links)
+          .join("line")
+            .attr("stroke-width", d => Math.sqrt(d.value))
+            .attr("stroke", "#E5E5E5");
+
+        function getNeighbors(node) {
+          return links.reduce(function (neighbors, l) {
+              if (l.target.id === node.id) {
+                neighbors.push(l.source.id)
+              } else if (l.source.id === node.id) {
+                neighbors.push(l.target.id)
+              }
+              return neighbors
+            },
+            [node.id]
+          );
+        }
+
+        function isNeighborLink(node, link) {
+          return link.target.id === node.id || link.source.id === node.id;
+        }
+
+        // https://stackoverflow.com/a/59015079/2780127
+        function getNodeRadius(node, neighbors) {
+          if (Array.isArray(neighbors) && neighbors.indexOf(node.id) > -1) {
+            return 10;
+          }
+          return 5;
+        }
+
+        function getNodeColor(node, neighbors) {
+          if (Array.isArray(neighbors) && neighbors.indexOf(node.id) > -1) {
+            return "green";
+          }
+          return "#3776ab";
+        }
+
+        function getLinkColor(node, link) {
+          return isNeighborLink(node, link) ? "green" : "#E5E5E5";
+        }
+
+        function getTextColor(node, neighbors) {
+          return Array.isArray(neighbors) && neighbors.indexOf(node.id) > -1 ? "green" : "#E5E5E5";
+        }
+
+        function selectNode(selectedNode) {
+          var neighbors = getNeighbors(selectedNode);
+
+          // we modify the styles to highlight selected nodes
+          node.attr("r", function (node) { return getNodeRadius(node, neighbors) });
+          node.attr("fill", function (node) { return getNodeColor(node, neighbors) });
+          link.attr("stroke", function (link) { return getLinkColor(selectedNode, link) });
+          text.attr("fill", function (node) { return getTextColor(node, neighbors) });
+        }
+
+        var tooltip = d3.select("body").append("div")
+          .attr("class", "tooltip")
+          .style("opacity", 0);
+
+        const node = svg.append("g")
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 1.5)
+          .selectAll("circle")
+          .data(nodes)
+          .join("circle")
+            .attr("r", getNodeRadius)
+            .attr("fill", getNodeColor)
+            // .call(drag)
+            .on("click", selectNode)
+            .on("mouseover", function(d,i) {
+                tooltip.transition().duration(200).style("opacity", .9);
+                tooltip.html(d.word)
+                .style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(d) {
+                tooltip.transition().duration(500).style("opacity", 0);
+            });
+
+        const drag_handler = d3.drag()
+          .on("start", drag_start)
+          .on("drag", drag_drag)
+          .on("end", drag_end);
+
+        drag_handler(node);
+
+        const text = svg.append("g")
+          .selectAll("text")
+          .data(nodes)
+          .join("text")
+            .text(function (node) { return node.label; })
+            .attr("font-size", 10)
+            .attr("dx", 15)
+            .attr("dy", 4);
+
+        var zoom_handler = d3.zoom()
+          .on("zoom", zoom_actions);
+
+        zoom_handler(svg);
+
+        function drag_start(node) {
+          node.fx = node.x;
+          node.fy = node.y;
+        }
+
+        function drag_drag(node) {
+          simulation.alphaTarget(0.7).restart()
+          node.fx = d3.event.x;
+          node.fy = d3.event.y;
+        }
+
+        function drag_end(node) {
+          if (!d3.event.active) {
+            simulation.alphaTarget(0);
+          }
+          node.fx = null;
+          node.fy = null;
+        }
+
+        function zoom_actions(){
+          link.attr("transform", d3.event.transform);
+          node.attr("transform", d3.event.transform);
+          text.attr("transform", d3.event.transform);
+        }
+
+        function ticked() {
+          link
+            .attr("x1", function (link) { return link.source.x })
+            .attr("y1", function (link) { return link.source.y })
+            .attr("x2", function (link) { return link.target.x })
+            .attr("y2", function (link) { return link.target.y })
+          node
+            .attr("cx", function (node) { return node.x })
+            .attr("cy", function (node) { return node.y })
+          text
+            .attr('x', function (node) { return node.x })
+            .attr('y', function (node) { return node.y })
+        };
+      });
+    </script>
+  </body>
+</html>
