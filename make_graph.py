@@ -65,6 +65,8 @@ for file_path in glob.glob("peps/*"):
                                             peps[pep.number].append(str(int(found)))  # "0001"
                                     except IndexError:
                                         pass
+                                    if pep.number == 8:
+                                        print(found)
             except PEPError as e:
                 errmsg = "Error processing PEP %s (%s), excluding:" % (
                     e.number,

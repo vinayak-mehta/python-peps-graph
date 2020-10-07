@@ -63,9 +63,7 @@
 
         function getNeighbors(node) {
           return links.reduce(function (neighbors, l) {
-              if (l.target.id === node.id) {
-                neighbors.push(l.source.id)
-              } else if (l.source.id === node.id) {
+              if (l.source.id === node.id) {
                 neighbors.push(l.target.id)
               }
               return neighbors
@@ -75,7 +73,7 @@
         }
 
         function isNeighborLink(node, link) {
-          return link.target.id === node.id || link.source.id === node.id;
+          return link.source.id === node.id;
         }
 
         // https://stackoverflow.com/a/59015079/2780127
@@ -111,10 +109,6 @@
           text.attr("fill", function (node) { return getTextColor(node, neighbors) });
         }
 
-        var tooltip = d3.select("body").append("div")
-          .attr("class", "tooltip")
-          .style("opacity", 0);
-
         const node = svg.append("g")
             .attr("stroke", "#fff")
             .attr("stroke-width", 1.5)
@@ -124,16 +118,7 @@
             .attr("r", getNodeRadius)
             .attr("fill", getNodeColor)
             // .call(drag)
-            .on("click", selectNode)
-            .on("mouseover", function(d,i) {
-                tooltip.transition().duration(200).style("opacity", .9);
-                tooltip.html(d.word)
-                .style("left", (d3.event.pageX) + "px")
-                .style("top", (d3.event.pageY - 28) + "px");
-            })
-            .on("mouseout", function(d) {
-                tooltip.transition().duration(500).style("opacity", 0);
-            });
+            .on("click", selectNode);
 
         const drag_handler = d3.drag()
           .on("start", drag_start)
