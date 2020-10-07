@@ -1,3 +1,3 @@
 # python-peps-graph
 
-![demo][https://github.com/vinayak-mehta/python-peps-graph/blob/main/demo.gif]
+![demo][https://raw.githubusercontent.com/vinayak-mehta/python-peps-graph/main/demo.gif]
